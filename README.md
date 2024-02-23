@@ -1,0 +1,1 @@
+[![.NET Build and Test](https://github.com/rodolfoghi/NerdStoreEnterprise/actions/workflows/dotnet-build-and-test.yml/badge.svg)](https://github.com/rodolfoghi/NerdStoreEnterprise/actions/workflows/dotnet-build-and-test.yml)
