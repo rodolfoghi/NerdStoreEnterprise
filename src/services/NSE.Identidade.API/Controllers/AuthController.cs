@@ -10,18 +10,17 @@ using NSE.Identidade.API.Models;
 
 namespace NSE.Identidade.API.Controllers;
 
-[ApiController]
 [Route("api/identidade")]
 public class AuthController(
     SignInManager<IdentityUser> signInManager,
     UserManager<IdentityUser> userManager,
     IOptions<AppSettings> appSettings)
-    : Controller
+    : MainController
 {
     [HttpPost("nova-conta")]
     public async Task<ActionResult> Registrar(UsuarioRegistro usuarioRegistro)
     {
-        if (!ModelState.IsValid) return BadRequest();
+        if (!ModelState.IsValid) return CustomResponse(ModelState);
 
         var user = new IdentityUser
         {
@@ -32,23 +31,36 @@ public class AuthController(
 
         var result = await userManager.CreateAsync(user, usuarioRegistro.Senha);
 
-        if (!result.Succeeded) return BadRequest();
-        await signInManager.SignInAsync(user, false);
-        return Ok(await GerarJwt(usuarioRegistro.Email));
+        if (result.Succeeded) return CustomResponse(await GerarJwt(usuarioRegistro.Email));
+
+        foreach (var error in result.Errors)
+        {
+            AdicionarErroProcessamento(error.Description);
+        }
+
+        return CustomResponse();
 
     }
 
     [HttpPost("autenticar")]
     public async Task<ActionResult> Login(UsuarioLogin usuarioLogin)
     {
-        if (!ModelState.IsValid) return BadRequest();
+        if (!ModelState.IsValid) return CustomResponse(ModelState);
 
         var result = await signInManager
             .PasswordSignInAsync(usuarioLogin.Email, usuarioLogin.Senha, false, true);
 
-        if (!result.Succeeded) return BadRequest();
+        if (result.Succeeded) return CustomResponse(await GerarJwt(usuarioLogin.Email));
 
-        return Ok(await GerarJwt(usuarioLogin.Email));
+        if (result.IsLockedOut)
+        {
+            AdicionarErroProcessamento("Usuário temporariamente bloqueado por tentativas inválidas");
+            return CustomResponse();
+        }
+
+        AdicionarErroProcessamento("Usuário ou Senha incorretos");
+        return CustomResponse();
+
     }
 
     private async Task<UsuarioRespostaLogin> GerarJwt(string email)
